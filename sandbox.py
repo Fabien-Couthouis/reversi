@@ -1,7 +1,3 @@
 import time
-
-start = time.time()
-
-time.sleep(2)
-
-print(time.time()-start)
+res = [1, 2]
+print(res is not False)

@@ -36,8 +36,8 @@ class AdvancedPlayer(PlayerInterface):
         # random
         # moves = self._board.legal_moves()
         # move = moves[randint(0, len(moves)-1)]
-        # move = self.iterative_deepening(self.negaMax, 3)[1]
-        move = self.negaMax(horizon=3)[1]
+        move = self.iterative_deepening(self.negaMax, 3)[1]
+        # move = self.negaMax(horizon=3)[1]
         return move
 
     def playOpponentMove(self, x, y):
@@ -106,7 +106,10 @@ class AdvancedPlayer(PlayerInterface):
             val = self.heuristic()
         return (val, None)
 
-    def negaMax(self, is_white=None, horizon=10):
+    def negaMax(self, is_white=None, horizon=10, timeout=None):
+        # Check if timed out
+        if timeout is not None and timeout < time.time():
+            return None
         if is_white is None:
             is_white = self._is_white
         if horizon == 0 or self._board.is_game_over():
@@ -159,15 +162,12 @@ class AdvancedPlayer(PlayerInterface):
 
     def iterative_deepening(self, callback, max_time):
         horizon = 1
-        try:
-            TimeOut(max_time).start()
-            while True:
-                bestmove = callback(horizon=horizon)
-                horizon += 1
-
-        except TimeOut.TimeOutException as e:
-            # Timed out
-            print(e)
-            pass
+        timeout = time.time() + max_time
+        res = True
+        while res is not None:
+            res = callback(horizon=horizon, timeout=timeout)
+            horizon += 1
+            if res is not None:
+                bestmove = res
 
         return bestmove
