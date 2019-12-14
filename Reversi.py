@@ -33,23 +33,31 @@ class Board:
     def reset(self):
         self.__init__()
 
-    # Donne la taille du plateau
     def get_board_size(self):
+        "Return board size"
         return self._boardsize
 
     # Donne le nombre de pieces de blanc et noir sur le plateau
     # sous forme de tuple (blancs, noirs)
     # Peut être utilisé si le jeu est terminé pour déterminer le vainqueur
-    def get_nb_pieces(self, player=None):
+    def get_nb_coins(self, player=None):
+        """
+        Get nb of coins on the board
+        Arguments: player (optionak, default=None): None or Board._BLACK or Board._WHITE
+        Return: Number of coins for specified player. If set to none return a tuple (nb_white, nb_black)
+        """
         if player == self._BLACK:
             return self._nbBLACK
         elif player == self._WHITE:
             return self._nbWHITE
         else:
-            return self._nbBLACK, self._nbWHITE
+            return self._nbWHITE, self._nbBLACK
 
-    # Vérifie si player a le droit de jouer en (x,y)
+    def get_total_coins(self):
+        return self._nbWHITE+ self._nbBLACK
+        
     def is_valid_move(self, player, x, y):
+        "Check if player can play move in (x,y)"
         if x == -1 and y == -1:
             return not self.at_least_one_legal_move(player)
         return self.lazyTest_ValidMove(player, x, y)
@@ -57,12 +65,13 @@ class Board:
     def _isOnBoard(self, x, y):
         return x >= 0 and x < self._boardsize and y >= 0 and y < self._boardsize
 
-    # Renvoie la liste des pieces a retourner si le coup est valide
-    # Sinon renvoie False
-    # Ce code est très fortement inspiré de https://inventwithpython.com/chapter15.html
-    # y faire référence dans tous les cas
     def testAndBuild_ValidMove(self, player, xstart, ystart):
+        """
+        Get list of coins to return if move is valid, else return False
+        inspired by https://inventwithpython.com/chapter15.html
+        """
         if self._board[xstart][ystart] != self._EMPTY or not self._isOnBoard(xstart, ystart):
+            print("NOT LEGAL", self._board[xstart][ystart])
             return False
 
         # On pourra remettre _EMPTY ensuite
@@ -107,6 +116,9 @@ class Board:
 
     # Pareil que ci-dessus mais ne revoie que vrai / faux (permet de tester plus rapidement)
     def lazyTest_ValidMove(self, player, xstart, ystart):
+        """
+        Check if move is valid
+        """
         if self._board[xstart][ystart] != self._EMPTY or not self._isOnBoard(xstart, ystart):
             return False
 
@@ -142,6 +154,7 @@ class Board:
         return False
 
     def _flip(self, player):
+        "Invert player"
         if player == self._BLACK:
             return self._WHITE
         return self._BLACK
@@ -154,6 +167,7 @@ class Board:
         return True
 
     def push(self, move):
+        "Play the move on board"
         [player, x, y] = move
         assert player == self._nextPlayer
         if x == -1 and y == -1:  # pass
@@ -161,12 +175,17 @@ class Board:
             self._stack.append([move, self._successivePass, []])
             self._successivePass += 1
             return
+
         toflip = self.testAndBuild_ValidMove(player, x, y)
+        assert toflip != False
+
         self._stack.append([move, self._successivePass, toflip])
         self._successivePass = 0
         self._board[x][y] = player
+
         for xf, yf in toflip:
             self._board[xf][yf] = self._flip(self._board[xf][yf])
+
         if player == self._BLACK:
             self._nbBLACK += 1 + len(toflip)
             self._nbWHITE -= len(toflip)
@@ -177,6 +196,7 @@ class Board:
             self._nextPlayer = self._BLACK
 
     def pop(self):
+        "Cancel last move on board"
         [move, self._successivePass, toflip] = self._stack.pop()
         [player, x, y] = move
         self._nextPlayer = player
@@ -193,107 +213,13 @@ class Board:
             self._nbWHITE -= 1 + len(toflip)
             self._nbBLACK += len(toflip)
 
-    # Est-ce que on peut au moins jouer un coup ?
-    # Note: cette info pourrait être codée plus efficacement
     def at_least_one_legal_move(self, player):
+        "Can we play at least on move?"
         for x in range(0, self._boardsize):
             for y in range(0, self._boardsize):
                 if self.lazyTest_ValidMove(player, x, y):
                     return True
         return False
-
-    # ---------------------------------------------
-    # Heuristic functions
-    # ---------------------------------------------
-    def get_nb_legal_moves(self):
-        return len(self.legal_moves("default")), len(self.legal_moves("other"))
-
-    def get_corners(self):
-        player = self._nextPlayer
-        other = self._flip(player)
-        end = self._boardsize-1
-        corners_list = [(0, 0), (0, end), (end, 0), (end, end)]
-        player_corners, other_corners = [],[]
-        for (x, y) in corners_list:
-            if self._board[x][y] == player:
-                player_corners.append((x,y))
-            elif self._board[x][y] == other:
-                other_corners.append((x,y))
-        return player_corners, other_corners
-
-    def get_stability(self, player_corners, other_corners, nb_coins_p, nb_coins_o):
-        #inspired from http://pressibus.org/ataxx/autre/minimax/node3.html
-        player = self._nextPlayer
-        other = self._flip(player)
-        player_stables, other_stables = [], []
-
-        #which rows are filled?
-        for x in range(self._boardsize):
-            add = True
-            temp_player, temp_other = [], []
-            for y in range(self._boardsize):
-                square_value = self._board[x][y]
-                if square_value == player:
-                    temp_player.append((x, y))
-                elif square_value == other:
-                    temp_other.append((x, y))
-                else:
-                    add = False
-                    break
-            if add:
-                player_stables.extend(temp_player)
-                other_stables.extend(temp_other)
-        
-        # then append the corners
-        player_stables.extend(player_corners)
-        other_stables.extend(other_corners)
-
-        #looks for squares adjacent to these stable square
-        player_stables_nb= len(self.add_adjacents_to_stable(player_stables, player))
-        other_stables_nb = len(self.add_adjacents_to_stable(other_stables, other))
-
-        player_semi_stables_nb = len(self.get_semi_stables(player))
-        other_semi_stables_nb = len(self.get_semi_stables(other))
-        player_unstable_nb = nb_coins_p - player_stables_nb - player_semi_stables_nb
-        other_unstable_nb = nb_coins_o - other_semi_stables_nb - other_stables_nb
-
-        player_stability = player_stables_nb - player_unstable_nb
-        other_stability = other_stables_nb - other_unstable_nb
-
-
-        return player_stability, other_stability
-
-
-
-    def add_adjacents_to_stable(self, stable_squares, player):
-        candidates_lists = []
-
-        for x,y in stable_squares:
-            candidates = [(x,y-1),(x-1,y),(x,y+1),(x+1,y),(x+1,y+1),(x-1,y-1),(x-1,y+1),(x+1,y-1)]
-            candidates_lists.append(candidates)
-
-        for candidates in candidates_lists:
-            for candidate in candidates:
-                #check square validity and player
-                if not any([pos < 0 or pos >= self._boardsize for pos in candidate]) and self._board[x][y] == player:
-                    stable_squares.append(candidate)
-        return stable_squares
-
-    def get_semi_stables(self,player):
-        semi_stables = []
-        for move in self.legal_moves(player):
-            x,y = move[1], move[2]
-            toflip_list = self.testAndBuild_ValidMove(player, x, y)
-            if toflip_list != False:
-                for toflip in toflip_list:
-                    semi_stables.append(toflip)
-        return semi_stables #list(set(semi_stables))
-
- 
-
-
-
-    # ---------------------------------------------
 
     # Renvoi la liste des coups possibles
     # Note: cette méthode pourrait être codée plus efficacement

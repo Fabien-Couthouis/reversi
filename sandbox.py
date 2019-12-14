@@ -1,3 +1,3 @@
-import time
-res = [1, 2]
-print(res is not False)
+a = [(1, 2), (3, 4)]
+for x, y in a:
+    print(x, y)

@@ -57,7 +57,7 @@ while not b.is_game_over():
 
 print("The game is over")
 print(b)
-(nbwhites, nbblacks) = b.get_nb_pieces()
+(nbwhites, nbblacks) = b.get_nb_coins()
 print("Time:", totalTime)
 print("Winner: ", end="")
 if nbwhites > nbblacks:
@@ -66,3 +66,4 @@ elif nbblacks > nbwhites:
     print("BLACK")
 else:
     print("DEUCE")
+# print("Final is: ", nbwhites, "whites and ", nbblacks, "blacks")
