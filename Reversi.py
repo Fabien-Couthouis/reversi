@@ -54,8 +54,8 @@ class Board:
             return self._nbWHITE, self._nbBLACK
 
     def get_total_coins(self):
-        return self._nbWHITE+ self._nbBLACK
-        
+        return self._nbWHITE + self._nbBLACK
+
     def is_valid_move(self, player, x, y):
         "Check if player can play move in (x,y)"
         if x == -1 and y == -1:
@@ -165,6 +165,16 @@ class Board:
         if self.at_least_one_legal_move(self._flip(self._nextPlayer)):
             return False
         return True
+
+    def end_game(self):
+        nbwhites, nbblacks = self.get_nb_coins()
+        if nbwhites == nbblacks:
+            winner = 0
+        elif nbwhites > nbblacks:
+            winner = self._WHITE
+        else:
+            winner = self._BLACK
+        return self.is_game_over(), winner
 
     def push(self, move):
         "Play the move on board"
