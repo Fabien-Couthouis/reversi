@@ -141,7 +141,7 @@ class Heuristics:
             return 1000*self.corners() + 50*self.mobility()
 
         elif gamephase == "mid":
-            return 1000*self.corners() + 20*self.mobility() + 10*self.disc_difference() + 100*self.coin_parity()
+            return 1000*self.corners() + 20*self.mobility() + 10*self.disc_difference() + 100*self.coin_parity() + 500*self.stability()
 
         else:
             return 1000*self.corners() + 100*self.mobility() + 500*self.disc_difference() + 500*self.coin_parity()

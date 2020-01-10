@@ -37,6 +37,9 @@ class Board:
         "Return board size"
         return self._boardsize
 
+    def get_player(self):
+        return self._nextPlayer
+
     # Donne le nombre de pieces de blanc et noir sur le plateau
     # sous forme de tuple (blancs, noirs)
     # Peut être utilisé si le jeu est terminé pour déterminer le vainqueur
@@ -168,17 +171,18 @@ class Board:
 
     def end_game(self):
         nbwhites, nbblacks = self.get_nb_coins()
-        if nbwhites == nbblacks:
-            winner = 0
+        if nbwhites < nbblacks:
+            winner = self._BLACK
         elif nbwhites > nbblacks:
             winner = self._WHITE
         else:
-            winner = self._BLACK
+            winner = 0
         return self.is_game_over(), winner
 
     def push(self, move):
         "Play the move on board"
         [player, x, y] = move
+        # print("player", player, "next", self._nextPlayer)
         assert player == self._nextPlayer
         if x == -1 and y == -1:  # pass
             self._nextPlayer = self._flip(player)
@@ -231,10 +235,8 @@ class Board:
                     return True
         return False
 
-    # Renvoi la liste des coups possibles
-    # Note: cette méthode pourrait être codée plus efficacement
-
     def legal_moves(self, player="default"):
+        'Get all possible plays for current player if player="default"'
         if player == "default":
             player = self._nextPlayer
         else:
@@ -255,6 +257,10 @@ class Board:
         if player is self._WHITE:
             return self._nbWHITE - self._nbBLACK
         return self._nbBLACK - self._nbWHITE
+
+    def get_state(self):
+        "Hash of the board state"
+        return hash(str(self._board) + str(self._nextPlayer))
 
     def _piece2str(self, c):
         if c == self._WHITE:
