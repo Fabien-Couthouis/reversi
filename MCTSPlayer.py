@@ -14,9 +14,6 @@ def rollout_policy(board):
     legal_moves = board.legal_moves()
     action_probs = np.random.rand(len(legal_moves))
     return zip(legal_moves, action_probs)
-    # action = random.choice(legal_moves)
-
-    # return action
 
 
 def policy_value_fn(board):
@@ -30,24 +27,25 @@ def policy_value_fn(board):
 
 
 class Node:
-    _ID = 0
+    _NEXT_ID = 0
     _TOTAL_VISITS = 0
 
-    def __init__(self, parent):
+    def __init__(self, parent, state):
         self.n_visits = 0
         self.n_wins = 0
         self.children = {}
         self.parent = parent
+        self.state = state
 
         if parent == None:
             self.depth = 0
         else:
             self.depth = self.parent.depth + 1
-        self.id = Node._ID
-        Node._ID += 1
+        self.id = Node._NEXT_ID
+        Node._NEXT_ID += 1
 
-    def add_child(self, action):
-        self.children[str(action)] = Node(parent=self)
+    def add_child(self, action, state):
+        self.children[str(action)] = Node(parent=self, state=state)
 
     def is_root(self):
         return True if self.parent is None else False
@@ -55,10 +53,10 @@ class Node:
     def is_leaf(self):
         return self.children == {}
 
-    def expand(self, actions):
+    def expand(self, actions, state):
         for action, _ in actions:
             if str(action) not in self.children:
-                self.add_child(action)
+                self.add_child(action, state)
 
     def get_value(self):
         return self.n_wins/self.n_visits if self.n_visits != 0 else 0
@@ -89,28 +87,28 @@ class Node:
 
 
 class MCTS:
-    def __init__(self, n_games, policy=policy_value_fn):
+    def __init__(self, starting_board, policy=policy_value_fn):
         self._policy = policy
-        self._n_games = n_games
-        self._root = Node(parent=None)
+        self._starting_board = starting_board
+        self._root = Node(parent=None, state=self._starting_board.get_state())
 
-    def start_self_play(self, starting_board):
-        for _game in range(self._n_games):
-            print("game", _game)
-            board = copy.deepcopy(starting_board)
+    def start_self_play(self, n_games=1000):
+        for game in range(1, n_games+1):
+            if game % 100 == 0:
+                print("game", game)
+            board = copy.deepcopy(self.starting_board)
 
             # Selection
             node = self._root
             while not node.is_leaf():
-                # Take greedy action
+                # Take ucb-directed action
                 action, node = node.select()
-                # self.show()
                 board.push(action)
 
             # Expansion
             if not board.is_game_over():
                 action_probs = self._policy(board)
-                node.expand(action_probs)
+                node.expand(action_probs, board.get_state())
 
             # Simulation
             win = self.simulate(board)
@@ -130,9 +128,6 @@ class MCTS:
                 break
             action_probs = rollout_policy(board)
             next_action = max(action_probs, key=itemgetter(1))[0]
-            # next_action2 = rollout_policy(board)
-            # print(board)
-            # next_action = rollout_policy(board)
             board.push(next_action)
 
         if winner == 0:  # tie
@@ -142,31 +137,32 @@ class MCTS:
         else:
             return -1
 
-    def add_childs(self, graph, label_dict, node):
-        if node.is_leaf():
-            return
-        if node.is_root:
-            graph.add_node(node.id)
-            label_dict[node.id] = f"{node.n_wins}/{node.n_visits}"
-        for child in node.children.items():
-            child_node = child[1]
-            graph.add_node(child_node.id)
-            graph.add_edge(node.id, child_node.id)
-            self.add_childs(graph, label_dict, child_node)
-            label_dict[child_node.id] = f"{child_node.n_wins}/{child_node.n_visits}"
-
     def build_graph(self):
+        def add_childs(graph, label_dict, node):
+            if node.is_leaf():
+                return
+            if node.is_root:
+                graph.add_node(node.id)
+                label_dict[node.id] = f"{node.n_wins}/{node.n_visits}"
+            for child in node.children.items():
+                child_node = child[1]
+                graph.add_node(child_node.id)
+                graph.add_edge(node.id, child_node.id)
+                add_childs(graph, label_dict, child_node)
+                label_dict[child_node.id] = f"{child_node.n_wins}/{child_node.n_visits}"
+
         graph = nx.DiGraph()
         label_dict = {}
-        self.add_childs(graph, label_dict, self._root)
+        add_childs(graph, label_dict, self._root)
         return graph, label_dict
 
-    def show(self):
+    def show(self, save_image=False):
         graph, label_dict = self.build_graph()
-        write_dot(graph, 'test.dot')
+        write_dot(graph, 'mcts.dot')
         pos = graphviz_layout(graph, prog='dot')
         nx.draw(graph, pos, labels=label_dict, with_labels=True, arrows=False)
-        # nx.draw(graph, labels=label_dict, with_labels=True)
+        if save_image:
+            plt.savefig('mcts.png')
         plt.show()
 
 
@@ -239,11 +235,11 @@ class MCTS2:
 class MCTSPlayer(object):
     """Reversi player based on MCTS"""
 
-    def __init__(self, color, n_games=2000):
+    def __init__(self, color, mcts, n_games=2000):
         self._board = Reversi.Board(10)
         self.color = None
         self.newGame(color)
-        self.mcts = MCTS(n_games, policy_value_fn)
+        self.mcts = mcts
 
     def getPlayerName(self):
         return "MCTS player"
