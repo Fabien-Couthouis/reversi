@@ -1,17 +1,14 @@
 import sys
 import time
 import Reversi
+import joblib
 from io import StringIO
 from DefaultPlayer import DefaultPlayer
 from AdvancedPlayer import AdvancedPlayer
 from MCTSPlayer import MCTSPlayer, MCTS
 
 
-def main():
-    b = Reversi.Board(10)
-
-    next_player, other_player = DefaultPlayer(
-        b._BLACK), AdvancedPlayer(b._WHITE)
+def play(next_player, other_player, b):
     players = [next_player, other_player]
     nbmoves = 1
 
@@ -71,11 +68,30 @@ def main():
     print("Final is: ", nbwhites, "whites and ", nbblacks, "blacks")
 
 
-if __name__ == "__main__":
-    # main()
+def train_mcts(n_games, save=False, show=False):
     b = Reversi.Board(10)
-    # player = MCTSPlayer(b._BLACK)
-    # print(player.start_self_play())
-    mcts = MCTS()
-    mcts.start_self_play(b, n_games=100)
-    mcts.show(save_image=True)
+
+    mcts = MCTS(b)
+    mcts.start_self_play(n_games=n_games)
+    if show:
+        mcts.show(save_image=True)
+    if save:
+        mcts.save("mcts_1000.pickle")
+
+
+def load_mcts(path):
+    return joblib.load(path)
+
+
+if __name__ == "__main__":
+    # train_mcts(1000, save=True)
+
+    mcts = load_mcts("mcts_1000.pickle")
+    b = Reversi.Board(10)
+    print(b)
+    print(b.get_state())
+    print(mcts._root.state)
+
+    next_player, other_player = MCTSPlayer(
+        b._BLACK, mcts), AdvancedPlayer(b._WHITE)
+    play(next_player, other_player, b)

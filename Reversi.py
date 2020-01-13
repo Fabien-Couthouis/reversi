@@ -5,12 +5,14 @@
     https://inventwithpython.com/chapter15.html
 
     '''
+from TransTable import ZobTransTable
 
 
 class Board:
     _BLACK = 1
     _WHITE = 2
     _EMPTY = 0
+    _LIMIT = -1
 
     # Attention, la taille du plateau est donnée en paramètre
     def __init__(self, boardsize=8):
@@ -36,6 +38,9 @@ class Board:
     def get_board_size(self):
         "Return board size"
         return self._boardsize
+
+    def get_board(self):
+        return self._board
 
     def get_player(self):
         return self._nextPlayer
@@ -260,7 +265,8 @@ class Board:
 
     def get_state(self):
         "Hash of the board state"
-        return hash(str(self._board) + str(self._nextPlayer))
+        transtable = ZobTransTable(self)
+        return transtable.hash
 
     def _piece2str(self, c):
         if c == self._WHITE:

@@ -34,7 +34,7 @@ class AdvancedPlayer(PlayerInterface):
         return (x, y)
 
     def get_move(self):
-        move = self.iterative_deepening(self.negAlphaBeta, 3)
+        move = self.iterative_deepening(self.negAlphaBeta, 1)
         return move
 
     def playOpponentMove(self, x, y):

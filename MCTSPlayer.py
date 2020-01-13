@@ -7,6 +7,7 @@ import networkx as nx
 from networkx.drawing.nx_agraph import write_dot, graphviz_layout
 import matplotlib.pyplot as plt
 import math
+import joblib
 
 
 def rollout_policy(board):
@@ -82,6 +83,23 @@ class Node:
     def ucb1(self):
         return self.get_value() + math.sqrt(2 * math.log(Node._TOTAL_VISITS) / (self.n_visits+1))
 
+    def get_best_move(self):
+        'Get next move based on children values. Return move,node'
+        if self.is_leaf():
+            raise Exception(f"Node {str(self)} do not have any child")
+        move, node = max(self.children.items(),
+                         key=lambda act_node: act_node[1].get_value())
+        return eval(move), node
+
+    def find_child_with_move(self, move):
+        move = str(move)
+        for child in self.children.items():
+            child_move, child_node = child
+            print(child_move)
+            if child_move == move:
+                return child_node
+        return None
+
     def __str__(self):
         return f"Node n°{self.id} with depth {self.depth} and value {self.n_wins}/{self.n_visits}"
 
@@ -92,11 +110,11 @@ class MCTS:
         self._starting_board = starting_board
         self._root = Node(parent=None, state=self._starting_board.get_state())
 
-    def start_self_play(self, n_games=1000):
+    def start_self_play(self, n_games=1000, starting_board=self._starting_board):
         for game in range(1, n_games+1):
             if game % 100 == 0:
                 print("game", game)
-            board = copy.deepcopy(self.starting_board)
+            board = copy.deepcopy(starting_board)
 
             # Selection
             node = self._root
@@ -115,6 +133,9 @@ class MCTS:
 
             # Backpropagation
             node.back_propagate(not win)
+
+    def set_root(self, node):
+        self._root = node
 
     def simulate(self, board, limit=1000):
         """
@@ -165,89 +186,54 @@ class MCTS:
             plt.savefig('mcts.png')
         plt.show()
 
-
-class MCTS2:
-    def __init__(self, n_games, policy, epsilon=0.95):
-        self.epsilon = epsilon
-        self._policy = policy
-        self._n_games = n_games
-        self._root = Node(parent=None)
-
-    def walk(self, board):
-        board_copy = copy.deepcopy(board)
-        node = self._root
-
-        while True:
-            if node.is_leaf():
-                break
-            # Greedily select next move
-            action, node = node.select(random=False)
-            board_copy.push(action)
-
-        action_probs, _ = self._policy(board)
-
-        # Check for end of game
-        if not board.is_game_over():
-            node.expand(action_probs)
-        # Evaluate the leaf node by random rollout
-        win = self.eval_rollout(board_copy)
-
-        # Update value and visit count of nodes in this traversal.
-        node.back_propagate(not win)
-
-    def update(self, move):
-        if move in self._root._children:
-            self._root = self._root.children[move]
-            self._root.parent = None
-        else:
-            self._root = Node(parent=None)
-
-    def get_move(self, board):
-        """Runs all playouts sequentially and returns the most visited action.
-        state: the current game state
-        Return: the selected action
-        """
-        for _ in range(self._n_games):
-            self.walk(board)
-        return max(self._root.children.items(),
-                   key=lambda act_node: act_node[1].n_visits)[0]
-
-    def eval_rollout(self, board, limit=1000):
-        """Use the rollout policy to play until the end of the game,
-        returning +1 if the current player wins, -1 if the opponent wins,
-        and 0 if it is a tie.
-        """
-
-        for _ in range(limit):
-            end, winner = board.end_game()
-            if end:
-                break
-            action_probs = rollout_policy(board)
-            next_action = max(action_probs, key=itemgetter(1))[0]
-            board.push(next_action)
-
-        if winner == 0:  # tie
-            return 0
-        else:
-            return 1 if winner == board.get_player() else -1
+    def save(self, path="mcts.pickle"):
+        joblib.dump(self, path, compress=4)
 
 
 class MCTSPlayer(object):
     """Reversi player based on MCTS"""
 
-    def __init__(self, color, mcts, n_games=2000):
+    def __init__(self, color, mcts):
         self._board = Reversi.Board(10)
         self.color = None
         self.newGame(color)
         self.mcts = mcts
+        self.current_node = mcts._root
 
     def getPlayerName(self):
         return "MCTS player"
 
+    def update_current_node_with_move(self, move):
+        new_current_node = self.current_node.find_child_with_move(move)
+        self.update_current_node(new_current_node)
+
+    def update_current_node(self, node):
+        self.current_node = node
+
+    def getPlayerMove(self):
+        if self._board.is_game_over():
+            print("Referee told me to play but the game is over!")
+            return (-1, -1)
+        move, node = self.current_node.get_best_move()
+        print(node)
+        self.update_current_node(node)
+        self._board.push(move)
+        print("I am playing ", move)
+        (c, x, y) = move
+        print("color:", self.color, " c:", c)
+
+        assert(c == self.color)
+        print("My current board :")
+        print(self._board)
+        return (x, y)
+
     def playOpponentMove(self, x, y):
         assert(self._board.is_valid_move(self._opponent, x, y))
         print("Opponent played ", (x, y))
-        self._board.push([self._opponent, x, y])
+        move = [self._opponent, x, y]
+        self._board.push(move)
+        print(move)
+        self.update_current_node_with_move(move)
 
     def newGame(self, color):
         self.color = color
@@ -258,39 +244,3 @@ class MCTSPlayer(object):
             print("I won!!!")
         else:
             print("I lost :(!!")
-
-    def reset_player(self):
-        self.mcts.update(-1)
-
-    def getPlayerMove(self):
-        legal_moves = self._board.legal_moves()
-        if len(legal_moves) > 0:
-            move = self.mcts.get_move(self._board)
-            self.mcts.update(-1)
-            return move
-        else:
-            raise EnvironmentError("The board is full!")
-
-    def start_self_play(self):
-        """ Start a self-play game using a MCTS player, reuse the search tree,
-        and store the self-play data: (state, mcts_probs, z) for training
-        """
-        states, mcts_probs, current_players = [], [], []
-        while True:
-            move, move_probs = self.getPlayerMove()
-            # store the data
-            states.append(self._board.get_state())
-            mcts_probs.append(move_probs)
-            current_players.append(self._board.get_player())
-            # perform a move
-            self._board.push(move)
-            end, winner = self._board.end_game()
-            if end:
-                # winner from the perspective of the current player of each state
-                winners_z = np.zeros(len(current_players))
-                if winner != -1:
-                    winners_z[np.array(current_players) == winner] = 1.0
-                    winners_z[np.array(current_players) != winner] = -1.0
-                # reset MCTS root node
-                self.reset_player()
-                return winner, zip(states, mcts_probs, winners_z)
