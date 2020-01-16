@@ -5,12 +5,14 @@ import Reversi
 from Heuristics import Heuristics
 from random import randint
 from playerInterface import *
+from TimeOut import TimeOut
+from copy import deepcopy
 
 
-class AdvancedPlayer(PlayerInterface):
+class AlphaBetaPlayer(PlayerInterface):
 
-    def __init__(self, color):
-        self._board = Reversi.Board(10)
+    def __init__(self, color, board_size=8):
+        self._board = Reversi.Board(board_size)
         self.color = None
         self._opponent = None
         self._is_white = None
@@ -18,7 +20,7 @@ class AdvancedPlayer(PlayerInterface):
         self.newGame(color)
 
     def getPlayerName(self):
-        return "Jean-Claude"
+        return "Jackie Chan"
 
     def getPlayerMove(self):
         if self._board.is_game_over():
@@ -34,7 +36,7 @@ class AdvancedPlayer(PlayerInterface):
         return (x, y)
 
     def get_move(self):
-        move = self.iterative_deepening(self.negAlphaBeta, 1)
+        move = self.iterative_deepening(self.negAlphaBeta, 2)
         return move
 
     def playOpponentMove(self, x, y):
@@ -59,7 +61,6 @@ class AdvancedPlayer(PlayerInterface):
 
     def heuristic(self):
         return self.heuristics.total_heuristic()
-        # return self.naive_heuristic()
 
     def estimate_end(self, is_white):
         if self._board.is_game_over():
@@ -75,9 +76,6 @@ class AdvancedPlayer(PlayerInterface):
         return (val, None)
 
     def negaMax(self, is_white=None, horizon=10, timeout=None):
-        # Check if timed out
-        if timeout is not None and timeout < time.time():
-            return None, None
         if is_white is None:
             is_white = self._is_white
         if horizon == 0 or self._board.is_game_over():
@@ -89,7 +87,7 @@ class AdvancedPlayer(PlayerInterface):
             (nm, _) = self.negaMax(not is_white, horizon - 1, timeout)
 
             # Timed out
-            if nm is None:
+            if timeout.out_of_time():
                 self._board.pop()
                 return None, None
 
@@ -103,25 +101,23 @@ class AdvancedPlayer(PlayerInterface):
 
     # Neg Alpha Beta avec version d'echec
     def negAlphaBeta(self, alpha=None, beta=None, is_white=None, horizon=10, timeout=None):
-        # Check if timed out
-        if timeout is not None and timeout < time.time():
-            return None, None
-
         # Initialisation
         is_white = self._is_white if is_white is None else is_white
         alpha = -1e-8 if alpha is None else alpha
         beta = +1e-8 if beta is None else beta
 
-        if horizon == 0 or self._board.is_game_over():
+        board = self._board
+
+        if horizon == 0 or board.is_game_over():
             return self.estimate_end(is_white)
 
         best, best_action = None, None
-        for m in self._board.legal_moves():
-            self._board.push(m)
+        for m in board.legal_moves():
+            board.push(m)
             (nm, _) = self.negAlphaBeta(-beta, -alpha,
-                                        not is_white, horizon - 1)
+                                        not is_white, horizon - 1, timeout=timeout)
             # Timed out
-            if nm is None:
+            if timeout.out_of_time():
                 self._board.pop()
                 return None, None
 
@@ -131,22 +127,22 @@ class AdvancedPlayer(PlayerInterface):
                 if best > alpha:
                     alpha = best
                     if alpha > beta:  # pruning
-                        self._board.pop()
+                        board.pop()
                         return (best, best_action)
-            self._board.pop()
+            board.pop()
 
         return (best, best_action)
 
     def iterative_deepening(self, callback, max_time):
         horizon = 1
-        timeout = time.time() + max_time
-        res = True
+        timeout = TimeOut(max_time)
         start = time.time()
-        while res is not None:
-            _, res = callback(horizon=horizon, timeout=timeout)
+        while not timeout.out_of_time():
+            _, result = callback(horizon=horizon, timeout=timeout)
             horizon += 1
-            if res is not None:
-                bestmove = res
+            # store result if not timed out
+            if result is not None:
+                bestmove = result
         print("Took", time.time()-start)
 
         return bestmove

@@ -6,18 +6,17 @@ from random import randint
 from playerInterface import *
 
 
-class DefaultPlayer(PlayerInterface):
+class RandomPlayer(PlayerInterface):
 
-    def __init__(self, color):
-        self._board = Reversi.Board(10)
+    def __init__(self, color, board_size=8):
+        self._board = Reversi.Board(board_size)
         self.color = None
         self.newGame(color)
 
     def getPlayerName(self):
-        return "Random player"
+        return "Franky Vincent"
 
     def getPlayerMove(self):
-
         if self._board.is_game_over():
             print("Referee told me to play but the game is over!")
             return (-1, -1)

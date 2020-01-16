@@ -15,11 +15,11 @@ class Board:
     _LIMIT = -1
 
     # Attention, la taille du plateau est donnée en paramètre
-    def __init__(self, boardsize=8):
+    def __init__(self, board_size=8):
         self._nbWHITE = 2
         self._nbBLACK = 2
         self._nextPlayer = self._BLACK
-        self._boardsize = boardsize
+        self._boardsize = board_size
         self._board = []
         for _ in range(self._boardsize):
             self._board.append([self._EMPTY] * self._boardsize)
@@ -42,7 +42,7 @@ class Board:
     def get_board(self):
         return self._board
 
-    def get_player(self):
+    def get_next_player(self):
         return self._nextPlayer
 
     # Donne le nombre de pieces de blanc et noir sur le plateau
@@ -79,7 +79,7 @@ class Board:
         inspired by https://inventwithpython.com/chapter15.html
         """
         if self._board[xstart][ystart] != self._EMPTY or not self._isOnBoard(xstart, ystart):
-            print("NOT LEGAL", self._board[xstart][ystart])
+            print("ILLEGAL MOVE")
             return False
 
         # On pourra remettre _EMPTY ensuite
@@ -174,15 +174,19 @@ class Board:
             return False
         return True
 
-    def end_game(self):
+    def get_winner(self):
+        "Return winner player if game is overs, else None"
+        if not self.is_game_over():
+            return None
+
         nbwhites, nbblacks = self.get_nb_coins()
         if nbwhites < nbblacks:
             winner = self._BLACK
         elif nbwhites > nbblacks:
             winner = self._WHITE
         else:
-            winner = 0
-        return self.is_game_over(), winner
+            winner = 0  # tie
+        return winner
 
     def push(self, move):
         "Play the move on board"
@@ -263,10 +267,6 @@ class Board:
             return self._nbWHITE - self._nbBLACK
         return self._nbBLACK - self._nbWHITE
 
-    def get_state(self):
-        "Hash of the board state"
-        transtable = ZobTransTable(self)
-        return transtable.hash
 
     def _piece2str(self, c):
         if c == self._WHITE:
