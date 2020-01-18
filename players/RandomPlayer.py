@@ -3,7 +3,7 @@
 import time
 import Reversi
 from random import randint
-from playerInterface import *
+from players.playerInterface import *
 
 
 class RandomPlayer(PlayerInterface):

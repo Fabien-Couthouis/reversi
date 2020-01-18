@@ -2,22 +2,23 @@
 
 import time
 import Reversi
-from Heuristics import Heuristics
+from players.Heuristics import Heuristics
 from random import randint
-from playerInterface import *
-from TimeOut import TimeOut
+from players.playerInterface import *
+from players.Timer import Timer
 from copy import deepcopy
 
 
 class AlphaBetaPlayer(PlayerInterface):
 
-    def __init__(self, color, board_size=8):
+    def __init__(self, color, board_size=8, max_time=120):
         self._board = Reversi.Board(board_size)
         self.color = None
         self._opponent = None
         self._is_white = None
         self.heuristics = None
         self.newGame(color)
+        self.timer = Timer(max_time=max_time, max_n_turns=4+(board_size**2)/2)
 
     def getPlayerName(self):
         return "Jackie Chan"
@@ -26,8 +27,10 @@ class AlphaBetaPlayer(PlayerInterface):
         if self._board.is_game_over():
             print("Referee told me to play but the game is over!")
             return (-1, -1)
+        self.timer.start_turn()
         move = self.get_move()
         self._board.push(move)
+        self.timer.stop_turn()
         print("I am playing ", move)
         (c, x, y) = move
         assert(c == self.color)
@@ -75,32 +78,8 @@ class AlphaBetaPlayer(PlayerInterface):
             val = self.heuristic()
         return (val, None)
 
-    def negaMax(self, is_white=None, horizon=10, timeout=None):
-        if is_white is None:
-            is_white = self._is_white
-        if horizon == 0 or self._board.is_game_over():
-            return self.estimate_end(is_white)
-
-        best, best_action = None, None
-        for m in self._board.legal_moves():
-            self._board.push(m)
-            (nm, _) = self.negaMax(not is_white, horizon - 1, timeout)
-
-            # Timed out
-            if timeout.out_of_time():
-                self._board.pop()
-                return None, None
-
-            nm = -nm
-            if best is None or nm > best:
-                best = nm
-                best_action = m
-            self._board.pop()
-
-        return (best, best_action)
-
     # Neg Alpha Beta avec version d'echec
-    def negAlphaBeta(self, alpha=None, beta=None, is_white=None, horizon=10, timeout=None):
+    def negAlphaBeta(self, alpha=None, beta=None, is_white=None, horizon=10):
         # Initialisation
         is_white = self._is_white if is_white is None else is_white
         alpha = -1e-8 if alpha is None else alpha
@@ -115,9 +94,9 @@ class AlphaBetaPlayer(PlayerInterface):
         for m in board.legal_moves():
             board.push(m)
             (nm, _) = self.negAlphaBeta(-beta, -alpha,
-                                        not is_white, horizon - 1, timeout=timeout)
+                                        not is_white, horizon - 1)
             # Timed out
-            if timeout.out_of_time():
+            if self.timer.out_of_time_for_turn():
                 self._board.pop()
                 return None, None
 
@@ -135,14 +114,13 @@ class AlphaBetaPlayer(PlayerInterface):
 
     def iterative_deepening(self, callback, max_time):
         horizon = 1
-        timeout = TimeOut(max_time)
         start = time.time()
-        while not timeout.out_of_time():
-            _, result = callback(horizon=horizon, timeout=timeout)
+        while not self.timer.out_of_time_for_turn():
+            _, result = callback(horizon=horizon)
             horizon += 1
             # store result if not timed out
             if result is not None:
                 bestmove = result
-        print("Took", time.time()-start)
+        print("Took", time.time()-start, "s")
 
         return bestmove

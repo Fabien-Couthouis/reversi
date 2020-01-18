@@ -5,7 +5,6 @@
     https://inventwithpython.com/chapter15.html
 
     '''
-from TransTable import ZobTransTable
 
 
 class Board:
@@ -266,7 +265,6 @@ class Board:
         if player is self._WHITE:
             return self._nbWHITE - self._nbBLACK
         return self._nbBLACK - self._nbWHITE
-
 
     def _piece2str(self, c):
         if c == self._WHITE:

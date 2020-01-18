@@ -6,24 +6,14 @@ import Reversi
 import matplotlib.pyplot as plt
 import math
 import time
-from playerInterface import PlayerInterface
-from TimeOut import TimeOut
+from players.playerInterface import PlayerInterface
+from players.Timer import Timer
 
 
 def rollout_policy(board):
     'Rollout randomly'
     legal_moves = board.legal_moves()
     action_probs = np.random.rand(len(legal_moves))
-    return zip(legal_moves, action_probs)
-
-
-def policy_value_fn(board):
-    """a function that takes in a state and outputs a list of (action, probability)
-    tuples and a score for the state"""
-    legal_moves = board.legal_moves()
-
-    # return uniform probabilities for pure MCTS
-    action_probs = np.ones(len(legal_moves))/len(legal_moves)
     return zip(legal_moves, action_probs)
 
 
@@ -89,10 +79,13 @@ class Node:
 
     def find_child_with_action(self, action):
         action = str(action)
+        # add action if not in child
+        self.expand([action])
         for child in self.children.items():
             child_action, child_node = child
             if child_action == action:
                 return child_node
+        print("NONE", self.children.items())
         return None
 
     def __str__(self):
@@ -214,27 +207,27 @@ class MCTS:
 class MCTSPlayer(PlayerInterface):
     """Reversi player based on MCTS"""
 
-    def __init__(self, color, mcts, board_size=8):
+    def __init__(self, color, mcts, board_size=8, max_time=120):
         self._board = Reversi.Board(board_size)
         self.color = None
         self.newGame(color)
         self.mcts = mcts
         self.current_node = mcts._root
+        self.timer = Timer(max_time=max_time, max_n_turns=4+(board_size**2)/2)
 
     def getPlayerName(self):
         return "Jean-Claude Van Dam"
 
-    def update_current_node_with_action(self, action):
+    def _update_current_node_with_action(self, action):
         new_current_node = self.current_node.find_child_with_action(action)
-        self.update_current_node(new_current_node)
+        self._update_current_node(new_current_node)
 
-    def update_current_node(self, node):
+    def _update_current_node(self, node):
         self.current_node = node
 
-    def play_mcts(self, max_time=2):
-        timeout = TimeOut(max_time)
+    def _play_mcts(self):
         start = time.time()
-        while not timeout.out_of_time():
+        while not self.timer.out_of_time_for_turn():
             self.mcts.mcts_one_iteraction(
                 self._board, starting_node=self.current_node)
         print("MCTS took", time.time()-start)
@@ -244,10 +237,12 @@ class MCTSPlayer(PlayerInterface):
             print("Referee told me to play but the game is over!")
             return (-1, -1)
 
-        self.play_mcts()
+        self.timer.start_turn()
+        self._play_mcts()
         action, node = self.current_node.get_best_action()
         self._board.push(action)
-        self.update_current_node(node)
+        self._update_current_node(node)
+        self.timer.stop_turn()
         print("I am playing ", action)
         (c, x, y) = action
         print("color:", self.color, " c:", c)
@@ -262,7 +257,7 @@ class MCTSPlayer(PlayerInterface):
         print("Opponent played ", (x, y))
         action = [self._opponent, x, y]
         self._board.push(action)
-        self.update_current_node_with_action(action)
+        self._update_current_node_with_action(action)
 
     def newGame(self, color):
         self.color = color

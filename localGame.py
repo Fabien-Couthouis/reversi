@@ -6,15 +6,16 @@ import os
 import random
 from copy import deepcopy
 from io import StringIO
-from RandomPlayer import RandomPlayer
-from AlphaBetaPlayer import AlphaBetaPlayer
-from MCTSPlayer import MCTSPlayer, MCTS
+from players.RandomPlayer import RandomPlayer
+from players.AlphaBetaPlayer import AlphaBetaPlayer
+from players.MCTSPlayer import MCTSPlayer, MCTS
 
 
 def simulate_multiple_games(mcts, board, n_games):
 
     winners = []
-    for g in range(n_games):
+    for g in range(1, 1+n_games):
+        # Assign random color to each player
         color_mcts = random.choice([board._WHITE, board._BLACK])
         color_ab = board._flip(color_mcts)
 
@@ -49,7 +50,7 @@ def play(player1, player2, b):
     nbmoves = 1
 
     # total real time for each player
-    totalTime = {p.getPlayerName(): 20 for p in [next_player, other_player]}
+    totalTime = {p.getPlayerName(): 0 for p in [next_player, other_player]}
 
     print(b.legal_moves())
     while not b.is_game_over():
@@ -80,7 +81,7 @@ def play(player1, player2, b):
     print("The game is over")
     (nbwhites, nbblacks) = b.get_nb_coins()
     winner = b.get_winner()
-    print("Time:", )
+    print("Time:", totalTime)
     print("Winner: ", end="")
     if winner == b._WHITE:
         print("WHITE")
@@ -106,15 +107,21 @@ def train(n_iter=100, b_size=8):
 def test(mcts_name, n_games=4, b_size=8):
     b = Reversi.Board(board_size=b_size)
     mcts = load_mcts(mcts_name)
-    # Assign random color to each player
-
     simulate_multiple_games(mcts, b, n_games=n_games)
 
 
 if __name__ == "__main__":
     # train(10000, b_size=8)
 
-    test("mcts_save/mcts_10000_iter_size_8.pickle", b_size=8, n_games=100)
+    test("mcts_save/mcts_10000_iter_size_8.pickle", b_size=8, n_games=60)
+    # mcts = load_mcts("mcts_save/mcts_10000_iter_size_8.pickle")
+
+    # b_size = 8
+    # b = Reversi.Board(board_size=b_size)
+    # player1, player2 = AlphaBetaPlayer(
+    #     b ._BLACK, board_size=b_size, max_time=10), RandomPlayer(
+    #     b ._WHITE, board_size=b_size)
+    # play(player1, player2, b)
 
     # b = Reversi.Board(board_size=4)
     # mcts = MCTS()
