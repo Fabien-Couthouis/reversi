@@ -13,15 +13,11 @@ class AlphaBetaPlayer(PlayerInterface):
 
     def __init__(self, color, board_size=8, max_time=120):
         self._board = Reversi.Board(board_size)
-        self.color = None
-        self._opponent = None
-        self._is_white = None
-        self.heuristics = None
+        self.max_time = max_time
         self.newGame(color)
-        self.timer = Timer(max_time=max_time, max_n_turns=4+(board_size**2)/2)
 
     def getPlayerName(self):
-        return "Jackie Chan"
+        return "AB player Jackie Chan"
 
     def getPlayerMove(self):
         if self._board.is_game_over():
@@ -48,10 +44,13 @@ class AlphaBetaPlayer(PlayerInterface):
         self._board.push([self._opponent, x, y])
 
     def newGame(self, color):
+        self._board = Reversi.Board(self._board.get_board_size())
         self.color = color
         self._opponent = self._board._BLACK if color == self._board._WHITE else self._board._WHITE
         self._is_white = (self.color == self._board._WHITE)
         self.heuristics = Heuristics(self._board, self.color, self._opponent)
+        self.timer = Timer(max_time=self.max_time, max_n_turns=4 +
+                           (self._board.get_board_size()**2)/2)
 
     def endGame(self, winner):
         if self.color == winner:

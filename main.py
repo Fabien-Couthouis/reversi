@@ -11,36 +11,33 @@ from players.AlphaBetaPlayer import AlphaBetaPlayer
 from players.MCTSPlayer import MCTSPlayer, MCTS
 
 
-def simulate_multiple_games(mcts, board, n_games):
+def simulate_multiple_games(player1, player2, board, n_games):
 
     winners = []
     for g in range(1, 1+n_games):
         # Assign random color to each player
-        color_mcts = random.choice([board._WHITE, board._BLACK])
-        color_ab = board._flip(color_mcts)
-
-        mcts_player, ab_player = MCTSPlayer(
-            color_mcts, mcts, board_size=board._boardsize), AlphaBetaPlayer(color_ab, board_size=board._boardsize)
+        player1.newGame(random.choice([board._WHITE, board._BLACK]))
+        player2.newGame(board._flip(player1.color))
 
         sys.stdout = open(os.devnull, 'w')
         b = deepcopy(board)
-        winner = play(mcts_player, ab_player, b)
+        winner = play(player1, player2, b)
         sys.stdout = sys.__stdout__
-        if winner == mcts_player.color:
-            winner_str = "mcts"
-        elif winner == ab_player.color:
-            winner_str = "ab"
+        if winner == player1.color:
+            winner_str = player1.getPlayerName()
+        elif winner == player2.color:
+            winner_str = player2.getPlayerName()
         else:
             winner_str = "tie"
 
         winners.append(winner_str)
 
         if g % 1 == 0:
-            print("End of game", g, winner_str, "won.")
+            print("End of game", g, "winner:", winner_str)
 
     print("End of", n_games, "simulations\n", "-"*50)
-    print("MCTS wins:", winners.count("mcts"), ", AlphaBeta wins:",
-          winners.count("ab"), ", Ties:", winners.count("tie"))
+    print("Player1:", player1.getPlayerName(), "wins:", winners.count(player1.getPlayerName()), ", Player2", player2.getPlayerName(), "wins:",
+          winners.count(player2.getPlayerName()), ", Ties:", winners.count("tie"))
 
 
 def play(player1, player2, b):
@@ -104,29 +101,19 @@ def train(n_iter=100, b_size=8):
     mcts.save(f"mcts_save/mcts_{n_iter}_iter_size_{b_size}.pickle")
 
 
-def test(mcts_name, n_games=4, b_size=8):
-    b = Reversi.Board(board_size=b_size)
-    mcts = load_mcts(mcts_name)
-    simulate_multiple_games(mcts, b, n_games=n_games)
-
-
 if __name__ == "__main__":
-    # train(10000, b_size=8)
+    # #Train mcts for n iterations
+    # n = 10
+    # train(10, b_size=8) #uncomment to retrain the mcts
 
-    test("mcts_save/mcts_10000_iter_size_8.pickle", b_size=8, n_games=60)
-    # mcts = load_mcts("mcts_save/mcts_10000_iter_size_8.pickle")
+    # #Test mcts vs alphabeta for 120 games
+    board = Reversi.Board(8)
+    mcts = load_mcts("mcts_save/mcts_10000_iter_size_8.pickle")
+    p1, p2 = MCTSPlayer(
+        0, mcts, board._boardsize, max_time=120), AlphaBetaPlayer(1, board._boardsize, max_time=120)
 
-    # b_size = 8
-    # b = Reversi.Board(board_size=b_size)
-    # player1, player2 = AlphaBetaPlayer(
-    #     b ._BLACK, board_size=b_size, max_time=10), RandomPlayer(
-    #     b ._WHITE, board_size=b_size)
-    # play(player1, player2, b)
+    simulate_multiple_games(p1, p2, board, n_games=30)
 
-    # b = Reversi.Board(board_size=4)
-    # mcts = MCTS()
-    # mcts.train(b, 15, verbose=False)
+    # # Show graph for 5 iterations
+    # mcts = load_mcts("mcts_save/mcts_5_iter_size_8.pickle")
     # mcts.show()
-    # print(mcts._root)
-    # for _, child in mcts._root.children.items():
-    #     print(child)

@@ -14,7 +14,7 @@ class RandomPlayer(PlayerInterface):
         self.newGame(color)
 
     def getPlayerName(self):
-        return "Franky Vincent"
+        return "Random Player Franky Vincent"
 
     def getPlayerMove(self):
         if self._board.is_game_over():
@@ -38,6 +38,7 @@ class RandomPlayer(PlayerInterface):
         self._board.push([self._opponent, x, y])
 
     def newGame(self, color):
+        self._board = Reversi.Board(self._board.get_board_size())
         self.color = color
         self._opponent = 1 if color == 2 else 2
 

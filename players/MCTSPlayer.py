@@ -111,7 +111,6 @@ class MCTS:
         Performs a round of Monte Carlo: https://en.wikipedia.org/wiki/Monte_Carlo_tree_search
         """
         board_copy = copy.deepcopy(board)
-        # board_copy = board
 
         # Selection
         # Start from root R and select successive child nodes until a leaf node L is reached.
@@ -166,10 +165,11 @@ class MCTS:
     def show(self, save_image=False):
         "Plot mcts using networkx and matplotlib"
         import networkx as nx
-        from networkx.drawing.nx_agraph import write_dot, graphviz_layout
+        from networkx.drawing.nx_agraph import graphviz_layout
 
         def build_graph():
             def add_childs(graph, label_dict, node):
+
                 if node.is_leaf():
                     return
                 if node.is_root:
@@ -189,7 +189,6 @@ class MCTS:
             return graph, label_dict
 
         graph, label_dict = build_graph()
-        write_dot(graph, 'mcts.dot')
         pos = graphviz_layout(graph, prog='dot')
         _fig, ax = plt.subplots()
         nx.draw(graph, pos, labels=label_dict,
@@ -209,14 +208,12 @@ class MCTSPlayer(PlayerInterface):
 
     def __init__(self, color, mcts, board_size=8, max_time=120):
         self._board = Reversi.Board(board_size)
-        self.color = None
-        self.newGame(color)
         self.mcts = mcts
-        self.current_node = mcts._root
-        self.timer = Timer(max_time=max_time, max_n_turns=4+(board_size**2)/2)
+        self.max_time = max_time
+        self.newGame(color)
 
     def getPlayerName(self):
-        return "Jean-Claude Van Dam"
+        return "MCTS Player Jean-Claude Van Dam"
 
     def _update_current_node_with_action(self, action):
         new_current_node = self.current_node.find_child_with_action(action)
@@ -260,8 +257,12 @@ class MCTSPlayer(PlayerInterface):
         self._update_current_node_with_action(action)
 
     def newGame(self, color):
+        self._board = Reversi.Board(self._board.get_board_size())
         self.color = color
         self._opponent = 1 if color == 2 else 2
+        self.current_node = self.mcts._root
+        self.timer = Timer(max_time=self.max_time,
+                           max_n_turns=4+(self._board.get_board_size()**2)/2)
 
     def endGame(self, winner):
         if self.color == winner:
