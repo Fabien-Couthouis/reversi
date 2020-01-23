@@ -92,8 +92,8 @@ Reading direction : left player wins - top player wins - ties
 
 |           | AlphaBeta |   MCTS | Random |
 | --------- | :-------: | -----: | -----: |
-| AlphaBeta |     -     | 3-60-0 | 52-6-2 |
-| MCTS      |  57-60-0  |      - | 58-1-1 |
+| AlphaBeta |     -     | 3-57-0 | 52-6-2 |
+| MCTS      |  57-3-0  |      - | 58-1-1 |
 | Random    |  6-52-2   | 1-58-1 |      - |
 
 
