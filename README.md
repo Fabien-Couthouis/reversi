@@ -86,7 +86,7 @@ Where the maximum number of turns is given by 4+(board_size**2)/2).
 Comparison: MCTS vs AlphaBeta vs Random player (random color assignation at each game). MCTS vs AlphaBeta was tested with 120s maximum per game. AlphaBeta vs Random and MCTS vs Random was tested with only 30s maximum per game. I played 60 games for each experiment. The results are presented in the table below.
 
 
-Reading direction : left player wins - top player wins - ties
+Reading direction: left player wins - top player wins - ties
 
 
 
